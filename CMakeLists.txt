@@ -21,7 +21,7 @@ IF(COMMAND CMAKE_POLICY)
     ENDIF(POLICY CMP0075)
 ENDIF(COMMAND CMAKE_POLICY)
 
-SET(CMAKE_MODULE_PATH "${OpenAL_SOURCE_DIR}/cmake")
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${OpenAL_SOURCE_DIR}/cmake")
 
 INCLUDE(CheckFunctionExists)
 INCLUDE(CheckLibraryExists)
@@ -40,6 +40,12 @@ include(GNUInstallDirs)
 
 SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 
+
+OPTION(ALSOFT_BUILD_VERSION  "Build with versioning information"  ON)
+OPTION(ALSOFT_BUILD_NATIVE_TOOLS  "Build native tools target"  ON)
+if (ALSOFT_BUILD_NATIVE_TOOLS)
+	OPTION(ALSOFT_NATIVE_DEPENDS  "Add dependencies for native tools"  ON)
+endif()
 
 OPTION(ALSOFT_DLOPEN  "Check for the dlopen API for loading optional libs"  ON)
 
@@ -1134,7 +1140,7 @@ SET(BACKENDS  "${BACKENDS} Null")
 
 
 FIND_PACKAGE(Git)
-IF(GIT_FOUND AND EXISTS "${OpenAL_SOURCE_DIR}/.git")
+IF(NOT ALSOFT_BUILD_VERSION AND GIT_FOUND AND EXISTS "${OpenAL_SOURCE_DIR}/.git")
     # Get the current working branch and its latest abbreviated commit hash
     ADD_CUSTOM_TARGET(build_version
         ${CMAKE_COMMAND} -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
@@ -1177,10 +1183,21 @@ ELSE()
         VERBATIM
     )
 ENDIF()
-ADD_CUSTOM_TARGET(native-tools
-    DEPENDS "${BIN2H_COMMAND}" "${BSINCGEN_COMMAND}"
-    VERBATIM
-)
+
+if (ALSOFT_BUILD_NATIVE_TOOLS)
+	if (ALSOFT_NATIVE_DEPENDS)
+		message(STATUS "Building native tools with dependencies")
+		ADD_CUSTOM_TARGET(native-tools
+			DEPENDS "${BIN2H_COMMAND}" "${BSINCGEN_COMMAND}"
+			VERBATIM
+		)
+	else()
+		message(STATUS "Building native tools with no dependencies")
+		ADD_CUSTOM_TARGET(native-tools)
+	endif()
+else()
+	message(STATUS "Skipping native tools")
+endif()
 
 option(ALSOFT_EMBED_HRTF_DATA "Embed the HRTF data files (increases library footprint)" ON)
 if(ALSOFT_EMBED_HRTF_DATA)
